@@ -17,8 +17,10 @@ app.use(cookieParser());
 // app.use(require('./routes'));
 
 app.get('/home',(req,res)=>{
-    console.log('touched');
+    io.sockets.emit('touch')
 })
+
+
 app.get('/',(req,res)=>{
     res.sendFile(__dirname+'/index.html')
 })
@@ -26,9 +28,15 @@ app.get('/',(req,res)=>{
 
   io.on('connection', (socket) => {
     console.log('a user connected');
+    
     socket.on('disconnect', () => {
       console.log('user disconnected');
     });
+
+
+    socket.on('hello',(data,cb)=>{
+      console.log(data,cb);
+    })
   });
   
   
