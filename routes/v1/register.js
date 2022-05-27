@@ -15,16 +15,16 @@ const EMAIL_VAR_LINK = process.env.EMAIL_VARIFICATION_LINK
 const GMAIL = process.env.GMAIL_USERNAME
 const GPASS = process.env.GMAIL_PASS
 
-let transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      type:'login',
-      user:GMAIL,
-      pass: GPASS,
-    },
-  });
+// let transporter = nodemailer.createTransport({
+//     host: "smtp.gmail.com",
+//     port: 465,
+//     secure: true,
+//     auth: {
+//       type:'login',
+//       user:GMAIL,
+//       pass: GPASS,
+//     },
+//   });
 
 router.get('/',(req,res)=>{
     res.json({

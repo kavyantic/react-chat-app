@@ -70,7 +70,6 @@ userSocket.on('connection',(socket)=>{
 
     socket.to(data.id).emit('logo');
   })
-  
   socket.on('disconnect', () => {
     // console.log('Authenticated user disconnected');
   });
