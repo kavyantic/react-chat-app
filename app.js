@@ -19,6 +19,7 @@ const sharedsession = require("express-socket.io-session");
 
 const authUserSocketMid = require('./sockets/middlewares/authUser');
 const { runInNewContext } = require('vm');
+const { name } = require('ejs');
 let mongoUrl = process.env.PORT ? process.env.PRODUCTION_DB_URL : process.env.LOCAL_DB_URL
 var conn = mongoose.connect(mongoUrl)
 require('./models/Users')
@@ -44,10 +45,7 @@ app.use(express.static(CLIENT_DIR));
 
 
 app.get('/*',(req,res)=>{
-  res.send('done')
-  console.log(req.cookies)
-  console.log(req.user);
-  // res.sendFile(indexHtml)
+  res.sendFile(indexHtml)
 })
 
 const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
@@ -78,13 +76,44 @@ userSocket.on('connection',(socket)=>{
 
 
 
-
+const users = []
 
 io.on('connection', (socket) => {
   console.log('A unknown client connected');
     socket.on('disconnect', () => {
+      users.pop((u)=>{u.id===socket.id})
       console.log('user disconnected');
     });
+
+    socket.on('setName',(name)=>{
+      already = users.find(u=>u.id==socket.id)
+      if(already){
+          already.name = name
+          socket.broadcast.emit('userList',users)
+      } else {
+        users.push({name:name,id:socket.id})
+        socket.broadcast.emit('userList',users)
+        console.log(users);
+      }
+    
+    })
+
+    socket.on('locationUpdate',(cords)=>{
+      var name = users.find(u=>u.id==socket.id)
+
+      console.log(`location Update from ${name}`);
+      socket.broadcast.emit('clientUpdate',{
+        id:socket.id,
+        cords:cords
+      })
+    })
+
+    socket.on('getUserList',()=>{
+      socket.emit('userList',users)
+    })
+
+    
+
   });
 
 
