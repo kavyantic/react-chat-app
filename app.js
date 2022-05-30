@@ -21,7 +21,7 @@ const authUserSocketMid = require('./sockets/middlewares/authUser');
 const { runInNewContext } = require('vm');
 const { name } = require('ejs');
 let mongoUrl = process.env.PORT ? process.env.PRODUCTION_DB_URL : process.env.LOCAL_DB_URL
-var conn = mongoose.connect(mongoUrl)
+// var conn = mongoose.connect(mongoUrl)
 require('./models/Users')
 require('./models/Chats')
 const sessionMiddleware = session({
@@ -40,7 +40,7 @@ app.set('view engine', 'ejs');
 app.use(passport.initialize())
 app.use(passport.session())
 require('./config/passport');
-app.use('/api/v1',require('./routes/v1'));
+// app.use('/api/v1',require('./routes/v1'));
 app.use(express.static(CLIENT_DIR));
 
 
