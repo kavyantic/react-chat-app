@@ -101,7 +101,7 @@ io.on('connection', (socket) => {
     socket.on('locationUpdate',(cords)=>{
       var name = users.find(u=>u.id==socket.id)
 
-      console.log(`location Update from ${name}`);
+      // console.log(`location Update from ${name}`);
       socket.broadcast.emit('clientUpdate',{
         id:socket.id,
         cords:cords
@@ -120,6 +120,6 @@ io.on('connection', (socket) => {
 
   
   
-  server.listen(8000, () => {
+  server.listen(process.env.PORT || 8000, () => {
     console.log('listening on *:8000');
   });
