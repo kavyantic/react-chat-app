@@ -1,125 +1,70 @@
-require('dotenv').config()
-const path = require('path');
-const CLIENT_DIR = path.join(__dirname, 'client') || process.env.CLIENT_DIR
-const indexHtml = path.join(CLIENT_DIR+'/index.html')
-process.env.root = __dirname
+const express = require("express");
+const http = require("http");
 
-const passport = require('passport');
-const cookieParser = require('cookie-parser');
-const express = require('express');
+const PORT = process.env.PORT || 3000;
+
 const app = express();
-const http = require('http');
 const server = http.createServer(app);
-const { Server } = require("socket.io");
-const io = new Server(server);
-const socketConf = require('./sockets')
-const mongoose = require('mongoose')
-const session = require('express-session');
-const sharedsession = require("express-socket.io-session");
+const io = require("socket.io")(server);
 
-const authUserSocketMid = require('./sockets/middlewares/authUser');
-const { runInNewContext } = require('vm');
-const { name } = require('ejs');
-let mongoUrl = process.env.PORT ? process.env.PRODUCTION_DB_URL : process.env.LOCAL_DB_URL
-var conn = mongoose.connect(mongoUrl)
-require('./models/Users')
-require('./models/Chats')
-const sessionMiddleware = session({
-  secret: "secret",
-  resave: false,
-  saveUninitialized: false
+app.use(express.static("public"));
+
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/public/index.html");
 });
 
-// express app config
-app.use(sessionMiddleware)
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'ejs');
-app.use(passport.initialize())
-app.use(passport.session())
-require('./config/passport');
-app.use('/api/v1',require('./routes/v1'));
-app.use(express.static(CLIENT_DIR));
+let connectedPeers = [];
 
+io.on("connection", (socket) => {
+  connectedPeers.push(socket.id);
 
-app.get('/*',(req,res)=>{
-  res.sendFile(indexHtml)
-})
+  socket.on("pre-offer", (data) => {
+    console.log("pre-offer-came");
+    const { calleePersonalCode, callType } = data;
+    const connectedPeer = connectedPeers.find(
+      (peerSocketId) => peerSocketId === calleePersonalCode
+    );
 
-const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
-const userSocket = io.of('/user') 
-userSocket.use(wrap(sessionMiddleware));
-userSocket.use(wrap(passport.initialize()))
-userSocket.use(wrap(passport.session()))
+    console.log(connectedPeer);
 
-
-// io.use(sharedsession(sessionMiddleware));
-userSocket.on('connection',(socket)=>{
-  console.log(socket.request.user);
-  console.log('An authenticated user connected');
-   socket.on('helo',(data)=>{
-    socket.request.session.reload()
-    // console.log(socket.rooms);
-    // socket.emit('logo')
-    // io.sockets.to(socket.id).emit('logo','sdf')
-    console.log(socket.id,' to ',data.id);
-
-    socket.to(data.id).emit('logo');
-  })
-  socket.on('disconnect', () => {
-    // console.log('Authenticated user disconnected');
-  });
-})
-
-
-
-
-const users = []
-
-io.on('connection', (socket) => {
-  console.log('A unknown client connected');
-    socket.on('disconnect', () => {
-      users.pop((u)=>{u.id===socket.id})
-      console.log('user disconnected');
-    });
-
-    socket.on('setName',(name)=>{
-      already = users.find(u=>u.id==socket.id)
-      if(already){
-          already.name = name
-          socket.broadcast.emit('userList',users)
-      } else {
-        users.push({name:name,id:socket.id})
-        socket.broadcast.emit('userList',users)
-        console.log(users);
-      }
-    
-    })
-
-    socket.on('locationUpdate',(cords)=>{
-      var name = users.find(u=>u.id==socket.id)
-
-      // console.log(`location Update from ${name}`);
-      socket.broadcast.emit('clientUpdate',{
-        id:socket.id,
-        cords:cords
-      })
-    })
-
-    socket.on('getUserList',()=>{
-      socket.emit('userList',users)
-    })
-
-    
-
+    if (connectedPeer) {
+      const data = {
+        callerSocketId: socket.id,
+        callType,z
+      };
+      io.to(calleePersonalCode).emit("pre-offer", data);
+    } else {
+      const data = {
+        preOfferAnswer: "CALLEE_NOT_FOUND",
+      };
+      io.to(socket.id).emit("pre-offer-answer", data);
+    }
   });
 
+  socket.on("pre-offer-answer", (data) => {
+    const { callerSocketId } = data;
 
+    const connectedPeer = connectedPeers.find(
+      (peerSocketId) => peerSocketId === callerSocketId
+    );
 
-  
-  
-  server.listen(process.env.PORT || 8000, () => {
-    console.log('listening on *:8000');
+    if (connectedPeer) {
+      io.to(data.callerSocketId).emit("pre-offer-answer", data);
+    }
   });
+
+  socket.on("disconnect", () => {
+    console.log("user disconnected");
+
+    const newConnectedPeers = connectedPeers.filter(
+      (peerSocketId) => peerSocketId !== socket.id
+    );
+
+    connectedPeers = newConnectedPeers;
+    console.log(connectedPeers);
+  });
+});
+
+server.listen(PORT, () => {
+  console.log(`listening on ${PORT}`);
+});
